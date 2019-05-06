@@ -596,11 +596,11 @@ byte get_dab() {
    pinMode(DIO8, INPUT_PULLUP); bitWrite(x, 7, !digitalRead(DIO8));
 */
   
-  DDRD = DDRD & 0b11001111 ; 
-  PORTD = PORTD | 0b00110000; // PORTD bits 5,4 input_pullup
-  DDRC = DDRC & 0b11000000 ; 
-  PORTC = PORTC | 0b00111111; // PORTC bits 5,4,3,2,1,0 input_pullup
-  return ~((PIND<<2 & 0b11000000)+(PINC & 0b00111111));  
+  DDRD &= ~(1<<5|1<<4|1<<3|1<<2|1<<7); // Configure DIOx as input
+  PORTD |= 1<<5|1<<4|1<<3|1<<2|1<<7; // Enable pull-up resistor for DIOx inputs
+  DDRB &= ~(1<<0|1<<1|1<<2); // Configure DIOx as input
+  PORTB |= 1<<0|1<<1|1<<2; // Enable pull-up resistor for DIOx inputs
+  return ~( (PINB>>2 & 1)<<7 | (PINB>>1 & 1)<<6 | (PINB>>0 & 1)<<5 | (PIND>>7 & 1)<<4 | (PIND>>2 & 1)<<3 | (PIND>>3 & 1)<<2 | (PIND>>4 & 1)<<1 | (PIND>>5 & 1)<<0 );
 }
 void set_dab(byte x) {
   /*
@@ -613,10 +613,10 @@ void set_dab(byte x) {
    pinMode(DIO7, OUTPUT); digitalWrite(DIO7, bitRead(~x, 6));
    pinMode(DIO8, OUTPUT); digitalWrite(DIO8, bitRead(~x, 7));
    */
-  DDRD = DDRD | 0b00110000;
-  DDRC = DDRC | 0b00111111;
-  PORTD = ( (PORTD&0b11001111) | (~x>>2 & 0b00110000) ) ;
-  PORTC = ( (PORTC&0b11000000) | (~x    & 0b00111111) ) ;
+  DDRD |= 1<<5|1<<4|1<<3|1<<2|1<<7; // Configure DIOx as output
+  DDRB |= 1<<0|1<<1|1<<2; // Configure DIOx as output
+  PORTD = (PORTD & ~(1<<5|1<<4|1<<3|1<<2|1<<7)) | (~x>>0 & 1)<<5 | (~x>>1 & 1)<<4 | (~x>>2 & 1)<<3 | (~x>>3 & 1)<<2 | (~x>>4 & 1)<<7; // Write data to output
+  PORTB = (PORTB & ~(1<<0|1<<1|1<<2)) | (~x>>5 & 1)<<0 | (~x>>6 & 1)<<1 | (~x>>7 & 1)<<2; // Write data to output
 }
 
 
