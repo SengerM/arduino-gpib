@@ -38,12 +38,17 @@ Permissions beyond the scope of this license may be available at emanuele_girlan
 #define DIO6  8  /* GPIB 14 : I/O data bit 6     - Arduino PORTC bit 5 */
 #define DIO7  9   /* GPIB 15 : I/O data bit 7     - Arduino PORTD bit 4 */
 #define DIO8  10   /* GPIB 16 : I/O data bit 8     - Arduino PORTD bit 5 */
+
 #define EOI   A5  /* GPIB 5  : End Or Identify    - Arduino PORTB bit 4 */
 #define DAV   A4  /* GPIB 6  : Data Valid         - Arduino PORTB bit 3 */
 #define NRFD  A3  /* GPIB 7  : Not Ready For Data - Arduino PORTB bit 2 */
 #define NDAC  A2   /* GPIB 8  : Not Data Accepted  - Arduino PORTB bit 0 */
 #define IFC   A1   /* GPIB 9  : Interface Clear    - Arduino PORTB bit 1 */
 #define ATN   A0   /* GPIB 11 : Attention          - Arduino PORTD bit 7 */
+
+// Agregados que aun no estan implementados
+#define SQR   6    /* GPIB 10 : Service Request (set to ground)*/ 
+#define REN   11    /* GPIB 17 : Remote Enable (set to ground)*/
 /* 
  NOTE for the entire code: 
  Remember GPIB logic: HIGH means not active, deasserted; LOW means active, asserted; 
@@ -133,6 +138,13 @@ void setup() {
   digitalWrite(NRFD, LOW);
   pinMode(IFC, OUTPUT); 
   digitalWrite(IFC, HIGH);
+
+   
+  pinMode(REN, OUTPUT);  
+  digitalWrite(REN, LOW); 
+  pinMode(SQR, INPUT);  
+  digitalWrite(SQR, LOW);
+
   (void) get_dab();  // just to set all data lines in a known not floating state..
 
   if (verbose) print_ver();
@@ -279,7 +291,8 @@ static cmd_info cmds [] = {
   { "eot_enable",  eot_enable_h },
   { "eot_char",    eot_char_h   },
   { "dcl",         dcl_h        },
-  { "ifc",         ifc_h        }
+  { "ifc",         ifc_h        },
+  { "ren",         ren_h        },
 }; 
 
 /*
@@ -434,7 +447,7 @@ int temp;
 }
 
 void print_ver() {
-  Serial.println(F("ARDUINO GPIB firmware by E. Girlando Version 6.1")); 
+  Serial.println(F("ARDUINO GPIB firmware by E. Girlando (and MS RI INTI) Version 6.2")); 
 }
 void read_h() { 
 char *param, *pend; 
@@ -503,6 +516,15 @@ void verbose_h() {
     Serial.print("verbose: ");
     Serial.println(verbose ? "ON" : "OFF");
 }
+
+
+/*
+ * RJI 2019 Agrego la funcion REN: Remote Enable
+ * */
+ void ren_h(){
+  gpibREN();
+ }
+
 /*
     end of command handlers
  */
@@ -955,6 +977,26 @@ void gpibIFC(void) {
   delayMicroseconds(20);
 }
 
+// RJI REN line
+void gpibREN(void){
+  // activate "attention" (puts the BUS in command mode)
+  pinMode(ATN, OUTPUT); 
+  digitalWrite(ATN, LOW); 
+  delayMicroseconds(10);
+  
+  digitalWrite(REN, LOW);
+  delayMicroseconds(128);
+
+  // send ADDRESS for device clear
+  if (gpibWrite((byte)(0x20 + addr)))  { 
+    if (verbose) Serial.println(F("gpibSDC: gpib ADRRESS write failed")); 
+    return FAIL; 
+  } 
+  delayMicroseconds(10);
+  // deactivate "attention" (returns the BUS in data mode)
+  digitalWrite(ATN, HIGH); 
+  delayMicroseconds(20);
+}
 
 /*
 sends a Universal Multiline command to the GPIB BUS
